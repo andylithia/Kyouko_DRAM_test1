@@ -278,38 +278,95 @@ int ddrc_reg_values[2*80] = {
     0xf80060f0, 0,      //   53: CHE_ECC_STATS_REG_OFFSET at 0xF0
     0xf80060f4, 0,      //   54: ECC_scrub at 0xF4
 
-    0xf8006114, 0,      //   55: phy_rcvr_enable at 0x114				 8-bit
-    0xf8006118, 0,      //   56: PHY_Config0 at 0x118
-    0xf800611c, 0,      //   57: PHY_Config1 at 0x11C
-    0xf8006120, 0,      //   58: PHY_Config2 at 0x120
-    0xf8006124, 0,      //   59: PHY_Config3 at 0x124
-    0xf800612c, 0,      //   60: phy_init_ratio0 at 0x12C
-    0xf8006130, 0,      //   61: phy_init_ratio1 at 0x130
-    0xf8006134, 0,      //   62: phy_init_ratio2 at 0x134
-    0xf8006138, 0,      //   63: phy_init_ratio3 at 0x138
-    0xf8006140, 0,      //   64: phy_rd_dqs_cfg0 at 0x140				20-bit
-    0xf8006144, 0,      //   65: phy_rd_dqs_cfg1 at 0x144				20-bit
-    0xf8006148, 0,      //   66: phy_rd_dqs_cfg2 at 0x148				20-bit
-    0xf800614c, 0,      //   67: phy_rd_dqs_cfg3 at 0x14C				20-bit
-    0xf8006154, 0,      //   68: phy_wr_dqs_cfg0 at 0x154				20-bit
-    0xf8006158, 0,      //   69: phy_wr_dqs_cfg1 at 0x158				20-bit
-    0xf800615c, 0,      //   70: phy_wr_dqs_cfg2 at 0x15C				20-bit
-    0xf8006160, 0,      //   71: phy_wr_dqs_cfg3 at 0x160				20-bit
-    0xf8006168, 0,      //   72: phy_we_cfg0 at 0x168
-    0xf800616c, 0,      //   73: phy_we_cfg1 at 0x16C
-    0xf8006170, 0,      //   74: phy_we_cfg2 at 0x170
-    0xf8006174, 0,      //   75: phy_we_cfg3 at 0x174
-    0xf800617c, 0,      //   76: wr_data_slv0 at 0x17C					WR DATA FIFO DLL delay tap selection
+    0xf8006114, 0,      //   55: phy_rcvr_enable at 0x114				 8-bit Phy receiver enable
+						//			[7:4] rw reg_phy_dif_off: Value to drive to IO receiver enable pins when turning it OFF
+						//			[3:0] rw reg_phy_dif_on:  Value to drive to IO receiver enable pins when turning it ON
+
+    0xf8006118, 0,      //   56: PHY_Config0 at 0x118					31-bit PHY Configuration Register
+						//			[30:24] rw reg_phy_dq_offset: Offset from DQS to DQ, 0x40 = 90_deg
+						//			[23:15] rw Unknown Reserved
+						//			[14: 6] rw Unknown Reserved
+						//			[5] rw Unknown Reserved
+						//			[4] rw Unknown Reserved
+						//			[3] rw reg_phy_wrlvl_inc_mode:    Reserved
+						//			[2] rw reg_phy_gatelvl_inc_mode:  Reserved
+						//          [1] rw reg_phy_rdlvl_inc_mode:    Reserved
+						//			[0] rw reg_phy_data_slice_in_use: Data bus width selection for Read FIFO RE generation, One bit/slice
+    0xf800611c, 0,      //   57: PHY_Config1 at 0x11C 					|
+    0xf8006120, 0,      //   58: PHY_Config2 at 0x120 					|
+    0xf8006124, 0,      //   59: PHY_Config3 at 0x124 					/
+
+    0xf800612c, 0,      //   60: phy_init_ratio0 at 0x12C				20-bit rw, Gate Leveling & Write Leveling FSM Init Radio
+						//			[19:10] rw reg_phy_gatelvl_init_ratio
+						//			[ 9: 0] rw reg_phy_wrlvl_init_ratio
+    0xf8006130, 0,      //   61: phy_init_ratio1 at 0x130				|
+    0xf8006134, 0,      //   62: phy_init_ratio2 at 0x134				|
+    0xf8006138, 0,      //   63: phy_init_ratio3 at 0x138				/
+
+    0xf8006140, 0,      //   64: phy_rd_dqs_cfg0 at 0x140				20-bit PHY read DQS configuration register for data slice #n
+						//			[19:11] rw reg_phy_rd_dqs_slave_delay	read DQS slave DLL override value
+						//			[10]    rw reg_phy_rd_dqs_force			read DQS slave DLL override enable (if ==0, uses ratio instead)
+						//			[ 9: 0] rw reg_phy_rd_dqs_slave_ratio	read DQS slave DLL tap subdivider (256 steps)
+    0xf8006144, 0,      //   65: phy_rd_dqs_cfg1 at 0x144				|
+    0xf8006148, 0,      //   66: phy_rd_dqs_cfg2 at 0x148				|
+    0xf800614c, 0,      //   67: phy_rd_dqs_cfg3 at 0x14C				/
+
+    0xf8006154, 0,      //   68: phy_wr_dqs_cfg0 at 0x154				20-bit PHY write DQS configuration register for data slice #n
+						//			[19:11] rw reg_phy_wr_dqs_slave_delay	write DQS slave DLL override value
+						//			[10]    rw reg_phy_wr_dqs_force			write DQS slave DLL override enable (if ==0, uses ratio instead)
+						//			[ 9: 0] rw reg_phy_wr_dqs_slave_ratio	write DQS slave DLL tap subdivider (256 steps)
+    0xf8006158, 0,      //   69: phy_wr_dqs_cfg1 at 0x158				|
+    0xf800615c, 0,      //   70: phy_wr_dqs_cfg2 at 0x15C				|
+    0xf8006160, 0,      //   71: phy_wr_dqs_cfg3 at 0x160				/
+
+    0xf8006168, 0,      //   72: phy_we_cfg0 at 0x168					21-bit PHY FIFO write enable configuration for data slice #n
+						//			[20:12] rw reg_phy_fifo_we_in_delay
+						//			[11]    rw reg_phy_fifo_we_in_force
+						//			[10: 0] rw reg_phy_fifo_we_slave_ratio
+    0xf800616c, 0,      //   73: phy_we_cfg1 at 0x16C					|
+    0xf8006170, 0,      //   74: phy_we_cfg2 at 0x170					|
+    0xf8006174, 0,      //   75: phy_we_cfg3 at 0x174					/
+
+    0xf800617c, 0,      //   76: wr_data_slv0 at 0x17C					20-bit PHY write data slave ratio config for data slice #n
+						//			[19:11] rw reg_phy_wr_data_slave_delay
+						//			[10]    rw reg_phy_wr_data_slave_force
+						//			[ 9: 0] rw reg_phy_wr_data_slave_ratio
     0xf8006180, 0,      //   77: wr_data_slv1 at 0x180					|
     0xf8006184, 0,      //   78: wr_data_slv2 at 0x184					|
     0xf8006188, 0,      //   79: wr_data_slv3 at 0x188					/
-    0xf8006190, 0,      //   80: reg_64 at 0x190						Contains reg_phy_ctrl_slave_delay DLL control
+
+    0xf8006190, 0,      //   80: reg_64 at 0x190						32-bit Training Control 2: Contains reg_phy_ctrl_slave_delay DLL control
+						//			[31]    rw Reserved
+						//			[30]    rw reg_phy_cmd_latency
+						//			[29]    rw reg_phy_lpddr
+						//			[28]	rw Reserved
+						//			[27:21] rw reg_phy_ctrl_slave_delay		(remaining 2 bits are in reg65[19:18])
+						//			[20]    rw reg_phy_ctrl_slave_force
+						//			[19:10] rw reg_phy_ctrl_slave_ratio		Ratio value for addr/cmd launch timing in phy_ctrl macro, 256 steps
+						//			[9]     rw reg_phy_sel_logic			Leveling Algorithm Select
+						//			[8]     rw Reserved
+						//			[7]     rw reg_phy_invert_clkout		Invert the polarity of DRAM clock
+						//			[ 6: 0] rw Reserved
     0xf8006194, 0,      //   81: reg_65 at 0x194						Training Control
 	// 0xf80061A4		       : reg_69_6a0 at 0x1A4					Training results for data slice 0
 	// 0xf80061A8		       : reg_69_6a1 at 0x1A8					Training results for data slice 1
 	// 0xf80061B0		       : reg_69_6a2 at 0x1B0					Training results for data slice 2
 	// 0xf80061B4		       : reg_69_6a3 at 0x1B4					Training results for data slice 3
+	// 0xf80061B8		       : reg_6E_710								Training results for data slice 0
+	// 0xf80061BC		       : reg_6E_711								Training results for data slice 1
+	// 0xf80061C0		       : reg_6E_712								Training results for data slice 2
+	// 0xf80061C4		       : reg_6E_713								Training results for data slice 3
+	// 0xf80061CC		       : phy_dll_sts0							Slave DLL results for data slice 0
+	// 0xf80061D0		       : phy_dll_sts1							Slave DLL results for data slice 1
+	// 0xf80061D4		       : phy_dll_sts2							Slave DLL results for data slice 2
+	// 0xf80061D8		       : phy_dll_sts3							Slave DLL results for data slice 3
+	// 0xf80061E0		       : dll_lock_sts
+	// 0xf80061E4		       : phy_ctrl_sts
+	// 0xf80061E8		       : phy_ctrl_sts_reg2
 
+
+
+	// 0xf8006200		       : axi_id									ID and revision information
     0xf8006204, 0,      //   82: page_mask at 0x204
     0xf8006208, 0,      //   83: axi_priority_wr_port0 at 0x208
     0xf800620c, 0,      //   84: axi_priority_wr_port1 at 0x20C
@@ -2328,7 +2385,7 @@ int measure_read_eye(int *result, int test_start, int test_size, int fast, int i
   int mineye[4] = {9999,9999,9999,9999};
   int maxeye[4] = {-9999,-9999,-9999,-9999};
   int i, j, k, m, dqs_ratio, sel, rc, cc, ww;   // rd_gate_auto;
-  int mmax, mstep;
+  // int mmax, mstep;
   double scl = 1.0;
 
   memtest_stat = 0;
@@ -2342,9 +2399,9 @@ int measure_read_eye(int *result, int test_start, int test_size, int fast, int i
   }
 
   // disable_ddrc(setreg);
-  REG_WRITE(R00, ctrl_reg & 0xfffffffe);
-  REG_WRITE(R2C, reg_2c & ~(1 << 28)  );
-  REG_WRITE(R65, reg_65 & ~(1 << 16)  );
+  REG_WRITE(R00, ctrl_reg & 0xfffffffe);	// reg_00 0x000: DDRC Reset
+  REG_WRITE(R2C, reg_2c & ~(1 << 28)  );	// reg_2C 0x0B0: Disable Read Data Eye Training
+  REG_WRITE(R65, reg_65 & ~(1 << 16)  );	// reg_65 0x194: Use register programmed ratio values for read DQS Training Control
 
   // mmax, mstep;
   /*
@@ -2367,60 +2424,48 @@ int measure_read_eye(int *result, int test_start, int test_size, int fast, int i
   for (k=0; k<2; k++)
   {
   */
-  mmax  = 128;
-  mstep = 1;
-    for (m=0; m<=mmax; m++)
-    {
-    	/*
-      if (k == 0)
-        i = 64 + mstep*m;
-      else
-        i = 60 - mstep*m;
-        s
-      if ((i < 0) || (i > 128))
-        break;
-        */
 
+  // Sweeping from 90deg to 270deg
+  int mstart = 64;
+  int mmax  = 128+64-1;
+  int mstep = 1;
+
+  const int NOP_N = 1000;
+
+    for (m=mstart; m<=mmax; m+=mstep) {
       dqs_ratio = m;
-
       REG_WRITE(MAILBOX_STAT, i);
+      REG_WRITE(R00, ctrl_reg & 0xfffffffe);	// reg_00 0x000: DDRC Reset Enforced
 
-      REG_WRITE(R00, ctrl_reg & 0xfffffffe);
-
-      for (j=0; j<4; j++)
-      {
-        REG_WRITE(R50 + 4*j, dqs_ratio );  // always needed
-        REG_WRITE(R5A + 4*j, dqs_ratio + fwsr[j] );  // needed for ddr2 or manual
+      for (j=0; j<4; j++) {
+        REG_WRITE(R50 + 4*j, dqs_ratio );  			// 0x140: phy_rd_dqs_cfg, always needed
+        REG_WRITE(R5A + 4*j, dqs_ratio + fwsr[j] );	// 0x168: phy_fifo_we_slave_ratio, needed for ddr2 or manual
       }
-      REG_WRITE(R00, ctrl_reg);
+      REG_WRITE(R00, ctrl_reg);					// reg_00 0x000: DDRC Reset Dropped
 
       // wait a while
-      noop(1000000);
-
+      noop(NOP_N);
       // run a memory test
-      if (fast_is_bc)
-        sel = (fast) ? 0x0180 : 0x0E00;
-      else
-        sel = (fast) ? 0x0E00 : 0x1E60;
+      if (fast_is_bc) sel = (fast) ? 0x0180 : 0x0E00;
+      else            sel = (fast) ? 0x0E00 : 0x1E60;
 
       rc = memtest_all(test_start, test_size, sel, 0);
 
-      if (verbose & 2)
-      {
-        printf("\rTest offset %3d   %8d        [%8d] [%8d] [%8d] [%8d]    %g\n",
-          dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
+      if (verbose & 2) {
+        // printf("\rTest offset %3d   %8d        [%8d] [%8d] [%8d] [%8d]    %g\n",
+        //   dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
+    	// Generate CSV Format Test Reports
+    	printf("\r%d, %d, %d, %d, %d, %d, %g\n", dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
       }
 
       // check results
-      for (j=0; j<4; j++)
-      {
-        if (errcnt[j] == 0)
-        {
+      for (j=0; j<4; j++) {
+        if (errcnt[j] == 0) {
           mineye[j] = min(mineye[j], dqs_ratio);
           maxeye[j] = max(maxeye[j], dqs_ratio);
         }
       }
-
+ss
       // break if all errors already at the end
       /*
       if ((errcnt[0] > 0) && (errcnt[1] > 0) && (errcnt[2] > 0) && (errcnt[3] > 0))
@@ -2434,8 +2479,7 @@ int measure_read_eye(int *result, int test_start, int test_size, int fast, int i
   REG_WRITE(R2C, reg_2c );
   REG_WRITE(R65, reg_65 );
 
-  for (j=0; j<4; j++)
-  {
+  for (j=0; j<4; j++) {
     REG_WRITE(R50 + 4*j, reg_50[j] );
     REG_WRITE(R5A + 4*j, reg_5a[j] );
   }
