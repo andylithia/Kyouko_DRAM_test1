@@ -152,9 +152,13 @@ extern char inbyte();
 #define pll_select_cpu        0
 #define pll_select_ddr        1
 
+// ADDRESS
 #define reg_drive_addr    0xf8000b5c
+// DATA
 #define reg_drive_data    0xf8000b60
+// DQS
 #define reg_drive_diff    0xf8000b64
+// Internal Clock
 #define reg_drive_clock   0xf8000b68
 
 // XADC Register Space
@@ -2168,6 +2172,7 @@ int memtest_all(int test_start, int test_size, int sel, int lp)
         ** UPDATED to start in the middle till ends fail,
            no longer uses x0,x1,
  ****************************************************************************/
+/*
 int measure_write_eye(int x0, int x1, int step, int *result, double scl, int sz_scl, int fast, int fix_ctr, int save)
 {
   int i, j, k, dqs, sel, rc, lp, cc, ww, m;
@@ -2347,6 +2352,71 @@ int measure_write_eye(int x0, int x1, int step, int *result, double scl, int sz_
   memtest_stat = 1;
   return rc;
 }
+*/
+int measure_write_eye(int x0, int x1, int step, int *result, double scl, int sz_scl, int fast, int fix_ctr, int save)
+{
+  int i, j, k, dqs, sel, rc, lp, cc, ww, m;
+  int test_start, test_size;
+  int mineye[4] = {9999,9999,9999,9999};
+  int maxeye[4] = {-9999,-9999,-9999,-9999};
+
+  memtest_stat = 0;
+  rc = 0;
+  lp = 0;
+  test_start = 1024*1024;
+  test_size  = 1024*1024*sz_scl;
+
+  // save regs
+  for (i=0; i<2*80; i++)
+    ddrc_reg_values_save[i] = ddrc_reg_values[i];
+
+  int kstart = 0;
+  int kmax   = 32;
+  int kstep  = 1;
+
+  // int mstart = 64+40;
+  // int mmax   = 64+80;
+  int mstart = 64;
+  int mmax   = 64+128;
+  int mstep  = 4;
+
+  // measure
+  for (k=kstart; k<=kmax; k+=kstep) {
+	// set_drive_strength(reg_drive_clock, k,k);
+	  set_slew_rate(reg_drive_diff, k, k);
+    for (m=mstart; m<=mmax; m+=mstep) {
+      i = m;
+      REG_WRITE(MAILBOX_STAT, i);
+
+      // load new offset values
+      for (j=0; j<4; j++) {
+        update_reglist(&ddrc_reg_values[0], 80, R46 + 4*j, 24,  7, i);
+        dqs = get_reglist_value(&ddrc_reg_values[0], 80, R55 + 4*j, 0, 10);
+        update_reglist(&ddrc_reg_values[0], 80, R5F + 4*j,  0, 10, dqs+i);
+      }
+
+      // run ddr init
+      ddrc_init();
+      // wait a while
+      noop(100000);
+
+      // run a memory test
+      if (fast_is_bc) sel = (fast) ? 0x0180 : 0x0E00;
+      else            sel = (fast) ? 0x0E00 : 0x1E60;
+      rc = memtest_all(test_start, test_size, sel, lp);
+      // Generate CSV Format Test Reports
+      printf("%d,%d,%d,%d,%d,%d,%d\n", k, m, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3]);
+
+    }  // m
+  }  // k
+
+  // restore settings to default, but don't re-init
+  for (i=0; i<2*80; i++)
+    ddrc_reg_values[i] = ddrc_reg_values_save[i];
+
+  memtest_stat = 1;
+  return rc;
+}
 
 
 
@@ -2402,36 +2472,22 @@ int measure_read_eye(int *result, int test_start, int test_size, int fast, int i
   REG_WRITE(R00, ctrl_reg & 0xfffffffe);	// reg_00 0x000: DDRC Reset
   REG_WRITE(R2C, reg_2c & ~(1 << 28)  );	// reg_2C 0x0B0: Disable Read Data Eye Training
   REG_WRITE(R65, reg_65 & ~(1 << 16)  );	// reg_65 0x194: Use register programmed ratio values for read DQS Training Control
-
-  // mmax, mstep;
-  /*
-  if (istep == 2)
-  {
-    mmax = 32;
-    mstep = 2;
-  }
-  else if (istep == 1)
-  {
-    mmax = 64;
-    mstep = 1;
-  }
-  else
-  {  // step=4 is default
-    mmax = 16;
-    mstep = 4;
-  }
-
-  for (k=0; k<2; k++)
-  {
-  */
-
   // Sweeping from 90deg to 270deg
-  int mstart = 64;
-  int mmax  = 128+64-1;
-  int mstep = 1;
+  // int mstart = 64;
+  // int mmax  = 128+64-1;
+  int mstart = 64+40;
+  int mmax   = 64+80;
+  int mstep  = 1;
 
-  const int NOP_N = 1000;
+  int kstart = 15;
+  int kmax   = 128;
+  int kstep  = 5;
 
+  const int NOP_N = 10000;
+
+  for(k=kstart;k<kmax;k+=kstep){
+	  set_drive_strength(reg_drive_diff, k,k);
+	  // printf("DRIVE STRENGTH: %d\n", k);
     for (m=mstart; m<=mmax; m+=mstep) {
       dqs_ratio = m;
       REG_WRITE(MAILBOX_STAT, i);
@@ -2450,28 +2506,33 @@ int measure_read_eye(int *result, int test_start, int test_size, int fast, int i
       else            sel = (fast) ? 0x0E00 : 0x1E60;
 
       rc = memtest_all(test_start, test_size, sel, 0);
+      // Generate CSV Format Test Reports
+      printf("%d,\t %d,\t %d,\t %d,\t %d,\t %d,\t %d,\t %f\n", k, dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
 
+      /*
       if (verbose & 2) {
-        // printf("\rTest offset %3d   %8d        [%8d] [%8d] [%8d] [%8d]    %g\n",
-        //   dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
-    	// Generate CSV Format Test Reports
-    	printf("\r%d, %d, %d, %d, %d, %d, %g\n", dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
+        printf("\rTest offset %3d   %8d        [%8d] [%8d] [%8d] [%8d]    %g\n",
+          dqs_ratio, werr, errcnt[0], errcnt[1], errcnt[2], errcnt[3], total_test_time);
       }
+      */
 
       // check results
+      /*
       for (j=0; j<4; j++) {
         if (errcnt[j] == 0) {
           mineye[j] = min(mineye[j], dqs_ratio);
           maxeye[j] = max(maxeye[j], dqs_ratio);
         }
       }
-ss
+      */
+
       // break if all errors already at the end
       /*
       if ((errcnt[0] > 0) && (errcnt[1] > 0) && (errcnt[2] > 0) && (errcnt[3] > 0))
         break;
         */
     }
+  }
   // }
 
   // Restore regs and re-init
@@ -2745,7 +2806,7 @@ int find_best_eye(int *x, int cnt, int *qual1, int *qual2, int *qual3, int *qual
 
 /****************************************************************************
  * Function: weye_test1
- * Description:
+ * Description: write eye test
  ****************************************************************************/
 void weye_test1(int do_all)
 {
